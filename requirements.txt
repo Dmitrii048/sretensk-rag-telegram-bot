@@ -1,0 +1,6 @@
+aiogram==3.13.0
+langchain-community
+langchain-huggingface
+faiss-cpu
+sentence-transformers
+huggingface-hub
