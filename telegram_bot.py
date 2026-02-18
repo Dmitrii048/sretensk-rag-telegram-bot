@@ -19,7 +19,7 @@ embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-
 db = FAISS.load_local("sretensk_db", embeddings, allow_dangerous_deserialization=True)
 
 endpoint = HuggingFaceEndpoint(
-    repo_id="Qwen/Qwen2.5-72B-Instruct",
+    repo_id="Qwen/Qwen2.5-7B-Instruct",
     huggingfacehub_api_token=HF_TOKEN,
     temperature=0.15,
     max_new_tokens=2048,
