@@ -1,6 +1,9 @@
 aiogram==3.13.0
-langchain-community==0.3.7
-langchain-huggingface==0.1.2
-faiss-cpu==1.8.0
-sentence-transformers==3.1.1
-huggingface-hub==0.26.2
+langchain-community
+langchain-huggingface
+faiss-cpu
+huggingface-hub
+# Следующие две строки критически важны:
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+sentence-transformers
