@@ -7,7 +7,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.enums import ParseMode
 
 # Импорты RAG
-from langchain_community.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS 
 from langchain_huggingface import HuggingFaceEmbeddings, HuggingFaceEndpoint, ChatHuggingFace
 
 # === НАСТРОЙКИ ===
