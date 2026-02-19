@@ -2,31 +2,33 @@ import asyncio
 import os
 import json
 from aiogram import Bot, Dispatcher, F
+from aiogram.types import Message, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo, ContentType
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings, HuggingFaceEndpoint, ChatHuggingFace
 
-# === НАСТРОЙКИ ===
+# === ПРОВЕРКА ТОКЕНОВ ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-HF_TOKEN  = os.getenv("HF_TOKEN")
-# Вставь ссылку на GitHub Pages
+HF_TOKEN = os.getenv("HF_TOKEN")
+# ЗАМЕНИ НА СВОЮ ССЫЛКУ GITHUB PAGES
 WEB_APP_URL = "https://dmitriilikhosherst24.github.io/sretensk-rag-telegram-bot/" 
 
 if not BOT_TOKEN or not HF_TOKEN:
-    raise ValueError("❌ Проверь токены!")
+    raise ValueError("❌ Нет токенов в переменных окружения!")
 
-# === AI ===
+# === НАСТРОЙКА AI ===
+# Модель для поиска (должна совпадать с той, которой создавалась база)
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+# Загружаем базу
 db = FAISS.load_local("sretensk_db", embeddings, allow_dangerous_deserialization=True)
 
-# СТРОГИЕ НАСТРОЙКИ
+# LLM (Мозг)
 endpoint = HuggingFaceEndpoint(
     repo_id="Qwen/Qwen2.5-7B-Instruct", 
     huggingfacehub_api_token=HF_TOKEN,
-    temperature=0.1,  # <--- ОЧЕНЬ ВАЖНО: Убираем фантазии почти в ноль
+    temperature=0.3, # Баланс: не робот, но и не сказочник
     max_new_tokens=2048,
 )
 llm = ChatHuggingFace(llm=endpoint)
@@ -34,85 +36,93 @@ llm = ChatHuggingFace(llm=endpoint)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# === СИСТЕМНЫЙ ПРОМПТ (АНТИ-ГАЛЛЮЦИНАЦИИ) ===
+# === ПРОМПТ ===
 SYSTEM_PROMPT = """
-Ты — строгий методист-юрист Сретенской духовной академии.
-Отвечай ИСКЛЮЧИТЕЛЬНО на основе предоставленного ниже КОНТЕКСТА.
+Ты — методист-консультант Сретенской духовной академии.
+Твоя задача — помогать студентам, основываясь на нормативных актах.
 
-ПРАВИЛА:
-1. Если в контексте нет информации о ВСОКО, олимпиадах или чем-то еще — так и скажи: "В доступных мне документах (Устав, Положения) нет информации об этом."
-2. ЗАПРЕЩЕНО придумывать факты или брать их из общей эрудиции.
-3. Всегда указывай название документа, если оно есть в контексте.
-4. В конце ответа предложи 2-3 уточняющих вопроса по теме найденного документа.
+ИНСТРУКЦИЯ:
+1. Внимательно изучи предоставленный КОНТЕКСТ.
+2. Ответь на вопрос пользователя, используя факты из контекста.
+3. Если в контексте есть частичная информация — используй её. Не говори "я не знаю", если в тексте есть хоть что-то полезное.
+4. Если информации совсем нет — предложи обратиться в деканат.
+5. Ссылайся на названия документов, если они указаны в тексте.
 """
 
-async def generate_smart_answer(question: str):
+async def get_answer(question: str):
     try:
-        # Ищем документы
-        docs = db.similarity_search(question, k=6)
-        # Фильтр мусора
-        docs = [d for d in docs if len(d.page_content.strip()) > 30]
-
-        if not docs:
-            return "⚠️ В базе знаний Академии не найдено документов, соответствующих вашему запросу. Попробуйте переформулировать вопрос (например, используйте более официальные термины)."
-
+        # Ищем 10 фрагментов (было 6, стало больше, чтобы не терять инфо)
+        docs = db.similarity_search(question, k=10)
+        
         # Собираем контекст
-        context_text = "\n\n".join([f"📄 Источник: {d.metadata.get('source', 'Документ')}\n{d.page_content}" for d in docs])
+        context_text = ""
+        for d in docs:
+            # Отсеиваем слишком короткий мусор
+            if len(d.page_content) > 40:
+                context_text += f"\n--- ИЗ ДОКУМЕНТА: {d.metadata.get('source', 'Неизвестно')} ---\n{d.page_content}\n"
 
-        # Формируем запрос
+        if not context_text:
+            return "К сожалению, в базе знаний не нашлось подходящих документов. Попробуйте сформулировать иначе."
+
+        # Запрос к нейросети
         response = await llm.ainvoke([
             ("system", SYSTEM_PROMPT),
-            ("human", f"КОНТЕКСТ:\n{context_text}\n\nВОПРОС: {question}")
+            ("human", f"КОНТЕКСТ:\n{context_text}\n\nВОПРОС СТУДЕНТА: {question}")
         ])
         return response.content
-    except Exception as e:
-        return f"Произошла техническая ошибка: {str(e)[:100]}"
 
-# === ХЕНДЛЕРЫ ===
+    except Exception as e:
+        print(f"Ошибка AI: {e}")
+        return "Произошла техническая ошибка при обработке запроса."
+
+# === ОБРАБОТЧИКИ (HANDLERS) ===
 
 @dp.message(Command("start"))
-async def start_cmd(message: Message):
-    # КЛАВИАТУРА ПОД СТРОКОЙ ВВОДА (Самый надежный способ)
+async def start_handler(message: Message):
+    # Создаем клавиатуру с кнопкой WebApp
     kb = ReplyKeyboardBuilder()
-    kb.button(text="🎓 Открыть помощника", web_app=WebAppInfo(url=WEB_APP_URL))
+    kb.button(text="📱 Открыть Вопросы", web_app=WebAppInfo(url=WEB_APP_URL))
     
     await message.answer(
-        "👋 Здравствуйте! Я правовой ассистент СДА.\n"
-        "Нажмите кнопку внизу, чтобы открыть удобный интерфейс поиска.",
+        "👋 Привет! Я помощник по документам Академии.\n"
+        "Нажми кнопку ниже, чтобы выбрать тему или задать вопрос.",
         reply_markup=kb.as_markup(resize_keyboard=True)
     )
 
 # ЛОВИМ ДАННЫЕ ИЗ МИНИ-АППА
-@dp.message(F.content_type == ContentType.WEB_APP_DATA)
-async def web_app_handler(message: Message):
-    # 1. Читаем данные
-    data = json.loads(message.web_app_data.data)
-    question = data.get("question", "")
+@dp.message(F.web_app_data)
+async def web_app_data_handler(message: Message):
+    print(f"📥 Пришли данные из WebApp: {message.web_app_data.data}") # Лог для отладки
     
-    if not question:
-        return
+    try:
+        data = json.loads(message.web_app_data.data)
+        question = data.get("question")
+        
+        if question:
+            # Пишем юзеру, что процесс пошел
+            wait_msg = await message.answer(f"🔍 Ищу: <b>{question}</b>...", parse_mode="HTML")
+            
+            # Генерируем ответ
+            answer = await get_answer(question)
+            
+            # Удаляем "Ищу..." и пишем ответ
+            await wait_msg.delete()
+            await message.answer(answer)
+            
+    except Exception as e:
+        await message.answer(f"Ошибка чтения данных: {e}")
 
-    # 2. Отвечаем пользователю, что приняли запрос
-    status_msg = await message.answer(f"📥 <b>Запрос принят:</b> {question}\n⏳ Ищу информацию...", parse_mode="HTML")
-    
-    # 3. Генерируем ответ
-    answer = await generate_smart_answer(question)
-    
-    # 4. Удаляем сообщение "Ищу..." и пишем ответ (или просто пишем новое)
-    await status_msg.delete()
-    await message.answer(answer)
-
-# ОБРАБОТКА ОБЫЧНОГО ТЕКСТА
+# ОБЫЧНЫЙ ТЕКСТ
 @dp.message()
 async def text_handler(message: Message):
-    if not message.text: return
-    msg = await message.answer("🔍 Анализирую документы...")
-    answer = await generate_smart_answer(message.text)
-    await msg.delete()
-    await message.answer(answer)
+    if message.text:
+        wait_msg = await message.answer("🔍 Читаю документы...")
+        answer = await get_answer(message.text)
+        await wait_msg.delete()
+        await message.answer(answer)
 
 async def main():
-    print("Бот запущен...")
+    print("🚀 Бот запущен!")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
