@@ -1,27 +1,31 @@
 import asyncio
 import os
-from aiogram import Bot, Dispatcher
+import json
+from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo, ContentType
+from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings, HuggingFaceEndpoint, ChatHuggingFace
 
-# === ПЕРЕМЕННЫЕ ===
+# === НАСТРОЙКИ ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 HF_TOKEN  = os.getenv("HF_TOKEN")
+# Вставь сюда свою ссылку на GitHub Pages, где лежит index.html
+WEB_APP_URL = "https://твоя-ссылка-на-github-pages/" 
 
 if not BOT_TOKEN or not HF_TOKEN:
-    raise ValueError("❌ Не указаны BOT_TOKEN или HF_TOKEN в переменных окружения!")
+    raise ValueError("❌ Не указаны токены!")
 
-# База и модель (загружаются один раз)
+# === ИНИЦИАЛИЗАЦИЯ AI ===
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
 db = FAISS.load_local("sretensk_db", embeddings, allow_dangerous_deserialization=True)
 
 endpoint = HuggingFaceEndpoint(
-    repo_id="Qwen/Qwen2.5-7B-Instruct",  # 7B — быстрее и легче для хостинга
+    repo_id="Qwen/Qwen2.5-7B-Instruct", 
     huggingfacehub_api_token=HF_TOKEN,
-    temperature=0.3,
+    temperature=0.4, # Чуть выше креативность, чтобы он предлагал вопросы
     max_new_tokens=2048,
 )
 llm = ChatHuggingFace(llm=endpoint)
@@ -29,67 +33,81 @@ llm = ChatHuggingFace(llm=endpoint)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# --- СИСТЕМНЫЙ ПРОМПТ ---
+# === УМНЫЙ ПРОМПТ ===
 SYSTEM_PROMPT = """
-Ты — официальный методист-юрист Сретенской духовной академии.
-Отвечай ТОЛЬКО на основе предоставленного контекста.
-Обязательно ссылайся на названия документов и номера фрагментов.
-Если прямого ответа нет, но можно логично вывести — сделай вывод.
-Если совсем ничего подходящего — скажи ровно: 'В документах нет информации по этому вопросу.'
-Стиль: официальный, понятный, вежливый.
+Ты — ведущий методист-консультант Сретенской духовной академии.
+Твоя задача — максимально подробно отвечать на вопросы, используя контекст.
+
+ИНСТРУКЦИЯ:
+1. Используй найденный контекст для ответа.
+2. Если точного ответа нет — не останавливайся! Попробуй проанализировать контекст и дать "Вероятный порядок действий" или "Рекомендацию", но пометь это как совет.
+3. Тон: уважительный, академический, заботливый.
+4. В КОНЦЕ ОТВЕТА ОБЯЗАТЕЛЬНО:
+   На основе темы вопроса сгенерируй 3 коротких дополнительных вопроса, которые могут заинтересовать студента.
+   Оформи их списком после фразы "📌 Возможные уточнения:".
 """
 
-async def generate_answer(question: str) -> str:
+async def generate_smart_answer(question: str):
     try:
-        docs = db.similarity_search(question, k=8)
-        docs = [d for d in docs if len(d.page_content.strip()) > 50]
+        # Углубленный поиск: берем больше фрагментов (k=12)
+        docs = db.similarity_search(question, k=12)
+        # Фильтруем совсем короткий мусор
+        docs = [d for d in docs if len(d.page_content.strip()) > 30]
 
         if not docs:
-            return "В документах нет информации по этому вопросу. Попробуйте переформулировать или уточнить."
+            return "К сожалению, в базе знаний нет точных инструкций по этому запросу. Попробуйте переформулировать вопрос, используя официальные термины (например, 'отчисление', 'академический отпуск')."
 
-        context = "\n\n".join([
-            f"--- Фрагмент из {d.metadata.get('source', 'документа')} ---\n{d.page_content.strip()}"
-            for d in docs
-        ])
+        context = "\n\n".join([f"--- Документ: {d.metadata.get('source', 'Нормативный акт')} ---\n{d.page_content}" for d in docs])
 
+        # Запрос к нейросети
         response = await llm.ainvoke([
             ("system", SYSTEM_PROMPT),
-            ("human", f"КОНТЕКСТ:\n{context}\n\nВОПРОС: {question}")
+            ("human", f"КОНТЕКСТ:\n{context}\n\nВОПРОС СТУДЕНТА: {question}")
         ])
-
         return response.content
     except Exception as e:
-        return f"Ошибка: {str(e)[:200]}"
+        return f"Произошла техническая ошибка: {str(e)[:100]}"
+
+# === ХЕНДЛЕРЫ ===
 
 @dp.message(Command("start"))
-async def start_handler(message: Message):
-    markup = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(
-                text="📱 Открыть помощника",
-                web_app=WebAppInfo(url="https://твой-ник.github.io/sretensk-rag-telegram-bot/miniapp/")
-            )]
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=False
-    )
-
+async def start_cmd(message: Message):
+    # Кнопка для открытия Mini App
+    kb = ReplyKeyboardBuilder()
+    kb.button(text="🎓 Задать вопрос (Mini App)", web_app=WebAppInfo(url=WEB_APP_URL))
+    
     await message.answer(
-        "👋 Добро пожаловать! Я — интеллектуальный ассистент Сретенской духовной академии.\n\n"
-        "Можешь писать вопросы сюда или нажать кнопку ниже, чтобы открыть удобный чат.",
-        reply_markup=markup
+        "👋 Здравствуйте! Я интеллектуальный помощник Академии.\n"
+        "Вы можете писать вопросы прямо здесь или использовать удобное приложение с кнопкой ниже.",
+        reply_markup=kb.as_markup(resize_keyboard=True)
     )
 
+# 1. Обработка данных ИЗ Mini App (когда нажали "Отправить" в веб-приложении)
+@dp.message(F.content_type == ContentType.WEB_APP_DATA)
+async def web_app_handler(message: Message):
+    data = json.loads(message.web_app_data.data)
+    question = data.get("question", "")
+    
+    if not question:
+        return
+
+    # Отвечаем в чат, так как Mini App закроется
+    await message.answer(f"📥 Получен вопрос из приложения:\n<b>{question}</b>", parse_mode="HTML")
+    await message.answer("⏳ Анализирую нормативные акты...")
+    
+    answer = await generate_smart_answer(question)
+    await message.answer(answer)
+
+# 2. Обработка обычного текста в чате
 @dp.message()
 async def text_handler(message: Message):
-    if message.text:
-        await message.answer("🔍 Ищу в документах...")
-        answer = await generate_answer(message.text)
-        await message.answer(answer)
+    if not message.text: return
+    await message.answer("🔍 Ищу информацию...")
+    answer = await generate_smart_answer(message.text)
+    await message.answer(answer)
 
 async def main():
-    print("Бот запущен!")
-    await dp.start_polling(bot, drop_pending_updates=True)
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
