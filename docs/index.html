@@ -3,165 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SDA Legal Assistant</title>
+    <title>SDA Assistant</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root {
-            --bg-color: var(--tg-theme-bg-color, #ffffff);
-            --text-color: var(--tg-theme-text-color, #222222);
-            --hint-color: var(--tg-theme-hint-color, #999999);
-            --btn-color: var(--tg-theme-button-color, #2481cc);
-            --btn-text: var(--tg-theme-button-text-color, #ffffff);
-            --card-bg: var(--tg-theme-secondary-bg-color, #f0f2f5);
-        }
-
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            font-family: -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
             margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh;
         }
 
         /* Шапка */
         .header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 15px 20px;
-            background: var(--bg-color);
-            border-bottom: 1px solid rgba(0,0,0,0.1);
+            padding: 20px;
+            text-align: center;
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            display: flex; align-items: center; justify-content: center; gap: 15px;
         }
         
-        .logo {
-            width: 55px; height: 55px; object-fit: contain;
-        }
-
-        .title-container { text-align: center; flex: 1; margin: 0 10px; }
-        .title-container h1 { margin: 0; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-        .title-container p { margin: 4px 0 0; font-size: 10px; color: var(--hint-color); }
+        .logo { width: 48px; height: 48px; }
+        
+        .titles h1 { margin: 0; font-size: 17px; font-weight: 700; color: var(--tg-theme-text-color); }
+        .titles p { margin: 2px 0 0; font-size: 12px; color: var(--tg-theme-hint-color, #888); }
 
         /* Контент */
         .content {
-            flex: 1; padding: 20px; overflow-y: auto;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            flex: 1; padding: 20px;
+            display: flex; flex-direction: column; justify-content: center;
         }
 
-        .suggestions {
+        .label {
+            text-align: center; color: var(--tg-theme-hint-color, #888);
+            margin-bottom: 15px; font-size: 14px;
+        }
+
+        /* Чипсы (темы) */
+        .chips-container {
             display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 30px;
-            width: 100%;
         }
         
         .chip {
-            background-color: var(--card-bg);
-            color: var(--text-color);
-            padding: 10px 16px; border-radius: 20px; font-size: 13px; font-weight: 500;
-            cursor: pointer; 
-            border: 1px solid transparent;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            transition: all 0.2s;
+            background-color: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            padding: 8px 14px; border-radius: 18px; font-size: 13px; font-weight: 500;
+            cursor: pointer; opacity: 0.15; transition: opacity 0.2s;
         }
-        .chip:active { transform: scale(0.96); background-color: var(--btn-color); color: var(--btn-text); }
+        .chip.active { opacity: 1; } /* Для визуального выделения */
+
+        /* Стиль кнопок как в iOS */
+        .topic-btn {
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            color: var(--tg-theme-text-color);
+            border: none; padding: 12px 16px; border-radius: 12px; font-size: 14px;
+            cursor: pointer; transition: background 0.2s;
+        }
+        .topic-btn:active { opacity: 0.7; }
 
         /* Ввод */
-        .input-area {
-            padding: 20px; background-color: var(--bg-color);
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        .input-wrapper {
+            background: var(--tg-theme-bg-color);
+            padding: 15px;
+            border-top: 1px solid rgba(0,0,0,0.1);
         }
-        
-        textarea {
-            width: 100%; height: 60px;
-            background-color: var(--card-bg); color: var(--text-color);
-            border: 1px solid transparent; border-radius: 12px;
-            padding: 12px; font-size: 16px; outline: none; resize: none;
-            box-sizing: border-box; font-family: inherit; margin-bottom: 15px;
-        }
-        textarea:focus { border: 1px solid var(--btn-color); background-color: var(--bg-color); }
 
-        .send-btn {
-            width: 100%; padding: 14px;
-            background-color: var(--btn-color); color: var(--btn-text);
-            border: none; border-radius: 12px; font-size: 16px; font-weight: 600;
-            cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
-            transition: opacity 0.2s;
+        textarea {
+            width: 100%; height: 80px;
+            background-color: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            color: var(--tg-theme-text-color);
+            border: none; border-radius: 12px;
+            padding: 12px; font-size: 16px; outline: none; resize: none;
+            box-sizing: border-box; font-family: inherit; margin-bottom: 10px;
         }
-        .send-btn:active { opacity: 0.8; }
+
+        .main-btn {
+            width: 100%; padding: 16px;
+            background-color: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none; border-radius: 12px; font-size: 16px; font-weight: 600;
+            cursor: pointer;
+        }
+        .main-btn:active { transform: scale(0.98); }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <!-- ВАЖНО: Картинки должны лежать в той же папке docs с именами academy.png и themis.png -->
-        <img src="academy.png" alt="СДА" class="logo" onerror="this.src='https://via.placeholder.com/50?text=SDA'">
-        
-        <div class="title-container">
-            <h1>Правовой помощник</h1>
-            <p>Сретенская духовная академия</p>
+        <img src="https://img.icons8.com/color/96/university.png" class="logo" alt="Academy">
+        <div class="titles">
+            <h1>Помощник СДА</h1>
+            <p>Правовой консультант</p>
         </div>
-
-        <img src="themis.png" alt="Фемида" class="logo" onerror="this.src='https://via.placeholder.com/50?text=LAW'">
+        <img src="https://img.icons8.com/color/96/scales.png" class="logo" alt="Law">
     </div>
 
     <div class="content">
-        <p style="text-align: center; color: var(--hint-color); margin-bottom: 25px; font-size: 13px;">
-            Выберите тему обращения или напишите вопрос:
-        </p>
-        
-        <div class="suggestions">
-            <div class="chip" onclick="setQuestion('Как оформить академический отпуск?')">📄 Академ. отпуск</div>
-            <div class="chip" onclick="setQuestion('Правила отчисления за неуспеваемость')">❌ Отчисление</div>
-            <div class="chip" onclick="setQuestion('Размер стипендии и сроки выплат')">💰 Стипендия</div>
-            <div class="chip" onclick="setQuestion('Порядок заселения в общежитие')">🏠 Общежитие</div>
-            <div class="chip" onclick="setQuestion('Как получить материальную помощь?')">sos Матпомощь</div>
+        <div class="label">Популярные запросы:</div>
+        <div class="chips-container">
+            <button class="topic-btn" onclick="setQuestion('Как оформить академический отпуск?')">📄 Академ</button>
+            <button class="topic-btn" onclick="setQuestion('Порядок отчисления студентов')">❌ Отчисление</button>
+            <button class="topic-btn" onclick="setQuestion('Размер и виды стипендий')">💰 Стипендия</button>
+            <button class="topic-btn" onclick="setQuestion('Правила общежития')">🏠 Общежитие</button>
         </div>
+        
+        <div class="label" style="margin-top: 20px;">Или задайте свой вопрос:</div>
     </div>
 
-    <div class="input-area">
-        <textarea id="question-input" placeholder="Введите ваш вопрос..."></textarea>
-        <button class="send-btn" onclick="sendData()">НАЙТИ ОТВЕТ</button>
+    <div class="input-wrapper">
+        <textarea id="q-input" placeholder="Напишите вопрос здесь..."></textarea>
+        <button class="main-btn" onclick="send()">НАЙТИ ОТВЕТ</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
-        tg.expand(); 
+        tg.expand();
 
         function setQuestion(text) {
-            const input = document.getElementById('question-input');
-            input.value = text;
+            const area = document.getElementById('q-input');
+            area.value = text;
             if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-            document.querySelector('.send-btn').focus();
+            area.focus();
         }
 
-        function sendData() {
-            const input = document.getElementById('question-input');
-            const text = input.value.trim();
-
+        function send() {
+            const text = document.getElementById('q-input').value.trim();
             if (!text) {
-                tg.showAlert("Пожалуйста, введите вопрос.");
+                tg.showAlert("Пожалуйста, введите текст вопроса.");
                 return;
             }
 
-            const btn = document.querySelector('.send-btn');
-            btn.innerText = "ОТПРАВЛЯЮ...";
-            btn.style.opacity = "0.7";
-            
             if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
             const data = JSON.stringify({ question: text });
-
-            // === БЛОК ОТЛАДКИ И ОТПРАВКИ ===
-            try {
-                // Пытаемся отправить данные
-                tg.sendData(data);
-                
-                // На случай если на компьютере окно не закрылось само
-                setTimeout(function() {
-                    tg.close();
-                }, 500);
-                
-            } catch (e) {
-                // Если произошла ошибка JS, мы её увидим
-                alert("Ошибка отправки: " + e.message);
-                btn.innerText = "ОШИБКА";
-            }
+            tg.sendData(data);
         }
     </script>
 </body>
