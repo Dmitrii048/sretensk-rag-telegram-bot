@@ -4,15 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SDA Legal Assistant</title>
+    <!-- Подключаем скрипт Телеграма -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-color: var(--tg-theme-bg-color, #1A202C);
-            --text-color: var(--tg-theme-text-color, #ffffff);
-            --hint-color: var(--tg-theme-hint-color, #a0aec0);
-            --btn-color: var(--tg-theme-button-color, #3182ce);
+            --bg-color: var(--tg-theme-bg-color, #f5f5f5); /* Светлый фон по умолчанию */
+            --text-color: var(--tg-theme-text-color, #000000);
+            --hint-color: var(--tg-theme-hint-color, #999999);
+            --btn-color: var(--tg-theme-button-color, #3390ec);
             --btn-text: var(--tg-theme-button-text-color, #ffffff);
-            --card-bg: var(--tg-theme-secondary-bg-color, #2D3748);
+            --card-bg: var(--tg-theme-secondary-bg-color, #ffffff);
         }
 
         body {
@@ -22,47 +23,49 @@
             margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh;
         }
 
-        /* Шапка с гербами */
+        /* Шапка */
         .header {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 20px;
-            background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 100%);
+            padding: 15px 20px;
+            background: var(--card-bg);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
         
         .logo {
-            width: 60px; height: 60px; object-fit: contain;
-            filter: drop-shadow(0px 0px 5px rgba(255,255,255,0.2));
+            width: 50px; height: 50px; object-fit: contain;
         }
 
-        .title-container { text-align: center; flex: 1; }
-        .title-container h1 { margin: 0; font-size: 18px; font-weight: 700; }
-        .title-container p { margin: 5px 0 0; font-size: 12px; color: var(--hint-color); }
+        .title-container { text-align: center; flex: 1; margin: 0 10px; }
+        .title-container h1 { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.2; }
+        .title-container p { margin: 2px 0 0; font-size: 11px; color: var(--hint-color); }
 
-        /* Область контента */
+        /* Контент */
         .content {
             flex: 1; padding: 20px; overflow-y: auto;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
-        /* Подсказки (Suggestion Chips) */
         .suggestions {
-            display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 30px;
+            display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 30px;
             width: 100%;
         }
+        
         .chip {
             background-color: var(--card-bg);
             color: var(--text-color);
-            padding: 8px 16px; border-radius: 20px; font-size: 13px;
-            cursor: pointer; border: 1px solid transparent;
-            transition: all 0.2s;
+            padding: 10px 15px; border-radius: 20px; font-size: 13px;
+            cursor: pointer; 
+            border: 1px solid var(--hint-color); /* Добавил рамку для видимости */
+            opacity: 0.9;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: transform 0.1s;
         }
-        .chip:active { transform: scale(0.95); opacity: 0.8; }
+        .chip:active { transform: scale(0.95); opacity: 1; background-color: var(--btn-color); color: var(--btn-text); border-color: var(--btn-color); }
 
-        /* Поле ввода */
+        /* Ввод */
         .input-area {
             padding: 20px; background-color: var(--card-bg);
-            border-top-left-radius: 20px; border-top-right-radius: 20px;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+            border-top: 1px solid var(--hint-color);
         }
         
         textarea {
@@ -70,40 +73,39 @@
             background-color: var(--bg-color); color: var(--text-color);
             border: 1px solid var(--hint-color); border-radius: 12px;
             padding: 12px; font-size: 16px; outline: none; resize: none;
-            box-sizing: border-box; font-family: inherit;
+            box-sizing: border-box; font-family: inherit; margin-bottom: 10px;
         }
-        textarea:focus { border-color: var(--btn-color); }
+        textarea:focus { border-color: var(--btn-color); border-width: 2px; }
 
         .send-btn {
-            width: 100%; margin-top: 15px; padding: 14px;
+            width: 100%; padding: 14px;
             background-color: var(--btn-color); color: var(--btn-text);
             border: none; border-radius: 12px; font-size: 16px; font-weight: 600;
-            cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
+            cursor: pointer; text-transform: uppercase;
         }
+        .send-btn:active { opacity: 0.8; }
     </style>
 </head>
 <body>
 
-    <!-- 1. ШАПКА С ГЕРБАМИ -->
     <div class="header">
-        <!-- СЮДА ВСТАВИТЬ ГЕРБ АКАДЕМИИ (файл academy_logo.png загрузить в папку docs) -->
-        <img src="https://via.placeholder.com/100?text=SDA" alt="Герб СДА" class="logo" id="logo-left">
+        <!-- Я поставил временные ссылки на иконки, чтобы не было "битых" картинок -->
+        <!-- Позже замени их на свои файлы: src="academy.png" -->
+        <img src="https://img.icons8.com/ios-filled/100/3390ec/university.png" alt="Герб СДА" class="logo">
         
         <div class="title-container">
             <h1>Правовой помощник</h1>
             <p>Сретенская духовная академия</p>
         </div>
 
-        <!-- СЮДА ВСТАВИТЬ ФЕМИДУ (файл themis_logo.png загрузить в папку docs) -->
-        <img src="https://via.placeholder.com/100?text=LAW" alt="Фемида" class="logo" id="logo-right">
+        <img src="https://img.icons8.com/ios-filled/100/3390ec/scales.png" alt="Фемида" class="logo">
     </div>
 
     <div class="content">
-        <p style="text-align: center; color: var(--hint-color); margin-bottom: 20px;">
-            Выберите популярную тему или задайте свой вопрос:
+        <p style="text-align: center; color: var(--hint-color); margin-bottom: 20px; font-size: 14px;">
+            Нажмите на тему или введите вопрос:
         </p>
         
-        <!-- 2. БЫСТРЫЕ ВОПРОСЫ (ЧИПСЫ) -->
         <div class="suggestions">
             <div class="chip" onclick="setQuestion('Как оформить академический отпуск?')">📄 Академ. отпуск</div>
             <div class="chip" onclick="setQuestion('Правила отчисления студентов')">❌ Отчисление</div>
@@ -112,44 +114,54 @@
         </div>
     </div>
 
-    <!-- 3. ВВОД И ОТПРАВКА -->
     <div class="input-area">
         <textarea id="question-input" placeholder="Введите ваш вопрос..."></textarea>
-        <button class="send-btn" onclick="sendData()">Найти ответ</button>
+        <button class="send-btn" onclick="sendData()">НАЙТИ ОТВЕТ</button>
     </div>
 
     <script>
+        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Растянуть на весь экран
+        
+        // СООБЩАЕМ ТЕЛЕГРАМУ, ЧТО ПРИЛОЖЕНИЕ ГОТОВО (Обязательно!)
+        tg.ready(); 
+        tg.expand(); 
 
-        // Если вы хотите заменить заглушки на свои картинки с Github:
-        // document.getElementById('logo-left').src = 'academy_logo.png';
-        // document.getElementById('logo-right').src = 'themis_logo.png';
-
+        // Функция вставки текста из чипсов
         function setQuestion(text) {
             const input = document.getElementById('question-input');
             input.value = text;
-            // Можно сразу отправлять или дать пользователю отредактировать
-            input.focus();
+            
+            // Визуальный отклик (вибрация на телефоне)
+            if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            
+            // Сразу фокус на кнопке отправки для удобства
+            document.querySelector('.send-btn').focus();
         }
 
+        // Функция отправки
         function sendData() {
             const input = document.getElementById('question-input');
             const text = input.value.trim();
 
             if (!text) {
-                tg.showAlert("Пожалуйста, введите вопрос.");
+                // Используем нативный алерт Телеграма
+                tg.showAlert("Пожалуйста, введите текст вопроса.");
                 return;
             }
 
-            // Отправляем объект JSON, чтобы в Python его красиво разобрать
+            // Визуально меняем кнопку, чтобы было понятно, что процесс пошел
+            const btn = document.querySelector('.send-btn');
+            btn.innerText = "ОТПРАВЛЯЮ...";
+            if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
             const data = JSON.stringify({
-                question: text,
-                timestamp: new Date().toISOString()
+                question: text
             });
 
+            // ОТПРАВКА ДАННЫХ БОТУ
+            // Это закроет окно и передаст данные в python-скрипт
             tg.sendData(data);
-            // Приложение закроется само после этого
         }
     </script>
 </body>
