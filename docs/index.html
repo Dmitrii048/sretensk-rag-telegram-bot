@@ -3,77 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SDA Assistant</title>
+    <title>SDA Legal Assistant</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        :root {
+            --bg-color: var(--tg-theme-bg-color, #1A202C);
+            --text-color: var(--tg-theme-text-color, #ffffff);
+            --hint-color: var(--tg-theme-hint-color, #a0aec0);
+            --btn-color: var(--tg-theme-button-color, #3182ce);
+            --btn-text: var(--tg-theme-button-text-color, #ffffff);
+            --card-bg: var(--tg-theme-secondary-bg-color, #2D3748);
+        }
+
         body {
-            background-color: var(--tg-theme-bg-color, #1e1e1e);
-            color: var(--tg-theme-text-color, #ffffff);
+            background-color: var(--bg-color);
+            color: var(--text-color);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0; padding: 0;
-            display: flex; flex-direction: column; height: 100vh;
+            margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh;
         }
+
+        /* Шапка с гербами */
         .header {
-            padding: 20px; text-align: center;
-            border-bottom: 1px solid var(--tg-theme-hint-color, #333);
-        }
-        .header h1 { margin: 0; font-size: 20px; font-weight: 600; }
-        .header p { margin: 5px 0 0; color: var(--tg-theme-hint-color, #888); font-size: 14px; }
-        
-        .chat-area {
-            flex: 1; padding: 20px; display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; text-align: center;
-            color: var(--tg-theme-hint-color, #aaa);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 100%);
         }
         
-        .input-container {
-            padding: 15px; background: var(--tg-theme-secondary-bg-color, #2b2b2b);
-            display: flex; gap: 10px;
+        .logo {
+            width: 60px; height: 60px; object-fit: contain;
+            filter: drop-shadow(0px 0px 5px rgba(255,255,255,0.2));
+        }
+
+        .title-container { text-align: center; flex: 1; }
+        .title-container h1 { margin: 0; font-size: 18px; font-weight: 700; }
+        .title-container p { margin: 5px 0 0; font-size: 12px; color: var(--hint-color); }
+
+        /* Область контента */
+        .content {
+            flex: 1; padding: 20px; overflow-y: auto;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        /* Подсказки (Suggestion Chips) */
+        .suggestions {
+            display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 30px;
+            width: 100%;
+        }
+        .chip {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            padding: 8px 16px; border-radius: 20px; font-size: 13px;
+            cursor: pointer; border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+        .chip:active { transform: scale(0.95); opacity: 0.8; }
+
+        /* Поле ввода */
+        .input-area {
+            padding: 20px; background-color: var(--card-bg);
+            border-top-left-radius: 20px; border-top-right-radius: 20px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
         }
         
         textarea {
-            flex: 1; background: var(--tg-theme-bg-color, #404040);
-            border: none; border-radius: 12px;
-            padding: 12px; color: var(--tg-theme-text-color, #fff);
-            font-size: 16px; outline: none; resize: none; height: 50px;
+            width: 100%; height: 60px;
+            background-color: var(--bg-color); color: var(--text-color);
+            border: 1px solid var(--hint-color); border-radius: 12px;
+            padding: 12px; font-size: 16px; outline: none; resize: none;
+            box-sizing: border-box; font-family: inherit;
         }
-        
-        button {
-            background-color: var(--tg-theme-button-color, #50a8eb);
-            color: var(--tg-theme-button-text-color, #fff);
-            border: none; border-radius: 12px; padding: 0 20px;
-            font-weight: 600; font-size: 16px; cursor: pointer;
+        textarea:focus { border-color: var(--btn-color); }
+
+        .send-btn {
+            width: 100%; margin-top: 15px; padding: 14px;
+            background-color: var(--btn-color); color: var(--btn-text);
+            border: none; border-radius: 12px; font-size: 16px; font-weight: 600;
+            cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
         }
     </style>
 </head>
 <body>
+
+    <!-- 1. ШАПКА С ГЕРБАМИ -->
     <div class="header">
-        <h1>Помощник СДА</h1>
-        <p>Задайте вопрос по документам</p>
+        <!-- СЮДА ВСТАВИТЬ ГЕРБ АКАДЕМИИ (файл academy_logo.png загрузить в папку docs) -->
+        <img src="https://via.placeholder.com/100?text=SDA" alt="Герб СДА" class="logo" id="logo-left">
+        
+        <div class="title-container">
+            <h1>Правовой помощник</h1>
+            <p>Сретенская духовная академия</p>
+        </div>
+
+        <!-- СЮДА ВСТАВИТЬ ФЕМИДУ (файл themis_logo.png загрузить в папку docs) -->
+        <img src="https://via.placeholder.com/100?text=LAW" alt="Фемида" class="logo" id="logo-right">
     </div>
 
-    <div class="chat-area">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 20px; opacity: 0.5;">
-            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-        </svg>
-        <p>Я готов ответить на ваши вопросы по уставу, приказам и правилам Академии.</p>
+    <div class="content">
+        <p style="text-align: center; color: var(--hint-color); margin-bottom: 20px;">
+            Выберите популярную тему или задайте свой вопрос:
+        </p>
+        
+        <!-- 2. БЫСТРЫЕ ВОПРОСЫ (ЧИПСЫ) -->
+        <div class="suggestions">
+            <div class="chip" onclick="setQuestion('Как оформить академический отпуск?')">📄 Академ. отпуск</div>
+            <div class="chip" onclick="setQuestion('Правила отчисления студентов')">❌ Отчисление</div>
+            <div class="chip" onclick="setQuestion('Размер стипендии и выплаты')">💰 Стипендия</div>
+            <div class="chip" onclick="setQuestion('Порядок заселения в общежитие')">🏠 Общежитие</div>
+        </div>
     </div>
 
-    <div class="input-container">
-        <textarea id="question" placeholder="Например: Как оформить академ?"></textarea>
-        <button onclick="sendQuestion()">→</button>
+    <!-- 3. ВВОД И ОТПРАВКА -->
+    <div class="input-area">
+        <textarea id="question-input" placeholder="Введите ваш вопрос..."></textarea>
+        <button class="send-btn" onclick="sendData()">Найти ответ</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Раскрыть на весь экран
+        tg.expand(); // Растянуть на весь экран
 
-        function sendQuestion() {
-            const val = document.getElementById('question').value;
-            if (!val.trim()) return;
-            
-            // Отправляем данные боту
-            tg.sendData(val); 
+        // Если вы хотите заменить заглушки на свои картинки с Github:
+        // document.getElementById('logo-left').src = 'academy_logo.png';
+        // document.getElementById('logo-right').src = 'themis_logo.png';
+
+        function setQuestion(text) {
+            const input = document.getElementById('question-input');
+            input.value = text;
+            // Можно сразу отправлять или дать пользователю отредактировать
+            input.focus();
+        }
+
+        function sendData() {
+            const input = document.getElementById('question-input');
+            const text = input.value.trim();
+
+            if (!text) {
+                tg.showAlert("Пожалуйста, введите вопрос.");
+                return;
+            }
+
+            // Отправляем объект JSON, чтобы в Python его красиво разобрать
+            const data = JSON.stringify({
+                question: text,
+                timestamp: new Date().toISOString()
+            });
+
+            tg.sendData(data);
+            // Приложение закроется само после этого
         }
     </script>
 </body>
